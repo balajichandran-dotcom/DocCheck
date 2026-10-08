@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Document Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#ECF0F3; --panel:#FFFFFF; --ink:#17314C; --text:#1E2A36; --muted:#5D6B78; --line:#D3DBE2;
+  --accent:#17314C; --accent-ink:#FFFFFF; --hover:#F3F6F8; --ok:#1F7A4D; --err:#B3382C; --focus:#2F6FB0;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F161D; --panel:#17212B; --ink:#E3EAF1; --text:#DCE3EA; --muted:#93A1AE; --line:#2A3743;
+    --accent:#8FB8E0; --accent-ink:#0C1620; --hover:#1D2935; --ok:#5CC08C; --err:#E57A6D; --focus:#8FB8E0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F161D; --panel:#17212B; --ink:#E3EAF1; --text:#DCE3EA; --muted:#93A1AE; --line:#2A3743;
+  --accent:#8FB8E0; --accent-ink:#0C1620; --hover:#1D2935; --ok:#5CC08C; --err:#E57A6D; --focus:#8FB8E0;
+}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none !important}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.5}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace}
+
+/* Login */
+#login{min-height:100vh;display:grid;place-items:center;padding:24px}
+.card{width:min(400px,100%);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:32px 28px}
+.mark{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;color:var(--muted);letter-spacing:.02em}
+.card h1{margin:6px 0 4px;font-size:26px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.card p.sub{margin:0 0 24px;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font-size:13px;font-weight:600}
+.field input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 12px;width:100%}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.full{width:100%}
+.err{color:var(--err);font-size:13px;min-height:1.2em;margin:0 0 10px}
+
+/* App */
+#app{max-width:860px;margin:0 auto;padding:28px 20px 56px}
+header.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+header.bar h1{margin:0;font-size:22px;color:var(--ink);font-weight:700}
+.who{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
+.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.tools input{flex:1 1 240px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:10px 12px}
+.count{color:var(--muted);font-size:14px}
+ul.ids{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+ul.ids li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-top:1px solid var(--line)}
+ul.ids li:first-child{border-top:0}
+ul.ids li:hover{background:var(--hover)}
+.id{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:17px;font-weight:600;color:var(--ink);letter-spacing:.02em}
+.right{display:flex;align-items:center;gap:12px}
+.state{font-size:13px;color:var(--muted);min-width:0}
+.state.ok{color:var(--ok)} .state.bad{color:var(--err)}
+.dl{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.dl svg{width:16px;height:16px}
+.empty{padding:36px 18px;text-align:center;color:var(--muted)}
+.note{margin-top:14px;font-size:13px;color:var(--muted)}
+@media (max-width:520px){
+  ul.ids li{flex-wrap:wrap}
+  .right{width:100%;justify-content:space-between}
+}
+</style>
+</head>
+<body>
+
+<section id="login" aria-labelledby="loginTitle">
+  <form class="card" id="loginForm" novalidate>
+    <div class="mark">Document Desk</div>
+    <h1 id="loginTitle">Sign in</h1>
+    <p class="sub">Sign in to see your reference IDs and download their forms.</p>
+    <div class="field"><label for="u">Username</label><input id="u" name="username" autocomplete="username" required></div>
+    <div class="field"><label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required></div>
+    <p class="err" id="loginErr" role="alert"></p>
+    <button class="btn full" id="loginBtn" type="submit">Sign in</button>
+  </form>
+</section>
+
+<section id="app" hidden>
+  <header class="bar">
+    <h1>Reference IDs</h1>
+    <div class="who"><span>Signed in as <strong id="whoName"></strong></span><button class="btn ghost" id="logout" type="button">Sign out</button></div>
+  </header>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search IDs" aria-label="Search IDs">
+    <span class="count" id="count" aria-live="polite"></span>
+  </div>
+  <ul class="ids" id="list"></ul>
+  <p class="note" id="note"></p>
+</section>
+
+<script>
+(() => {
+  // ---- Configuration: edit these ----
+  const DEFAULT_USERNAME = "admin";
+  // SHA-256 of "username:password" for the default account (admin / Admin@123).
+  const CREDENTIAL_HASH = "c8aa900c8f62fddbdddfc8e273f954915587431e4cb8f81b68a4c0829ad5b608";
+  const IDS = [
+    "REF-2026-0001","REF-2026-0002","REF-2026-0003","REF-2026-0004",
+    "REF-2026-0005","REF-2026-0006","REF-2026-0007","REF-2026-0008",
+    "REF-2026-0009","REF-2026-0010","REF-2026-0011","REF-2026-0012"
+  ];
+  const SESSION_KEY = "docdesk-session";
+
+  const $ = s => document.querySelector(s);
+  const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
+
+  // ---- Auth (client-side gate) ----
+  async function sha256(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function getSession() { try { return sessionStorage.getItem(SESSION_KEY); } catch { return null; } }
+  function setSession(v) { try { v ? sessionStorage.setItem(SESSION_KEY, v) : sessionStorage.removeItem(SESSION_KEY); } catch {} }
+
+  $("#loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const u = $("#u").value.trim(), p = $("#p").value;
+    const err = $("#loginErr"); err.textContent = "";
+    if (!u || !p) { err.textContent = "Enter your username and password."; return; }
+    $("#loginBtn").disabled = true;
+    try {
+      if (!window.crypto || !crypto.subtle) throw new Error("This browser can't verify the sign-in. Open the page over https.");
+      if (await sha256(u.toLowerCase() + ":" + p) === CREDENTIAL_HASH) {
+        setSession(u.toLowerCase()); showApp(u.toLowerCase());
+      } else {
+        err.textContent = "Incorrect username or password.";
+        $("#p").value = ""; $("#p").focus();
+      }
+    } catch (ex) { err.textContent = ex.message; }
+    finally { $("#loginBtn").disabled = false; }
+  });
+  $("#logout").addEventListener("click", () => { setSession(null); $("#app").hidden = true; $("#login").hidden = false; $("#u").value = ""; $("#p").value = ""; $("#u").focus(); });
+
+  // ---- List ----
+  function showApp(user) {
+    $("#login").hidden = true; $("#app").hidden = false; $("#whoName").textContent = user; render(); $("#q").focus();
+  }
+  function render() {
+    const q = $("#q").value.trim().toLowerCase();
+    const rows = IDS.filter(id => id.toLowerCase().includes(q));
+    $("#count").textContent = rows.length === IDS.length ? `${IDS.length} IDs` : `${rows.length} of ${IDS.length} IDs`;
+    const list = $("#list"); list.textContent = "";
+    if (!rows.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "No IDs match your search."; list.append(li); return; }
+    for (const id of rows) {
+      const li = document.createElement("li");
+      const span = document.createElement("span"); span.className = "id"; span.textContent = id;
+      const right = document.createElement("div"); right.className = "right";
+      const state = document.createElement("span"); state.className = "state"; state.setAttribute("aria-live", "polite");
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn dl";
+      btn.innerHTML = ICON + "<span>Download PDF</span>"; btn.setAttribute("aria-label", "Download PDF for " + id);
+      btn.addEventListener("click", () => download(id, btn, state));
+      right.append(state, btn); li.append(span, right); list.append(li);
+    }
+  }
+  $("#q").addEventListener("input", render);
+
+  // ---- PDF ----
+  function buildFormPdf(J, id, issuedBy) {
+    const { jsPDF, AcroFormTextField } = J;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 20;
+    const now = new Date();
+    const stamp = now.toLocaleString("en-SG", { dateStyle: "medium", timeStyle: "short" });
+  
+    doc.setProperties({ title: "Form " + id, subject: "Form for " + id, keywords: id, creator: "Document Desk" });
+  
+    // Header band
+    doc.setFillColor(23, 49, 76); doc.rect(0, 0, W, 34, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("Record Form", M, 16);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text("Generated " + stamp, M, 25);
+  
+    // ID block
+    doc.setTextColor(23, 49, 76);
+    doc.setFontSize(10); doc.text("Reference ID", M, 50);
+    doc.setFont("courier", "bold"); doc.setFontSize(26); doc.text(id, M, 62);
+    doc.setDrawColor(201, 210, 218); doc.setLineWidth(0.4); doc.line(M, 70, W - M, 70);
+  
+    // Fillable fields
+    let y = 82;
+    const field = (label, name, opts = {}) => {
+      const h = opts.h || 9;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(60, 72, 84);
+      doc.text(label, M, y);
+      const f = new AcroFormTextField();
+      f.fieldName = name; f.Rect = [M, y + 2, W - 2 * M, h]; f.fontSize = 11;
+      if (opts.value !== undefined) f.value = opts.value;
+      if (opts.readOnly) f.readOnly = true;
+      if (opts.multiline) f.multiline = true;
+      doc.addField(f);
+      doc.setDrawColor(150, 160, 170); doc.rect(M, y + 2, W - 2 * M, h);
+      y += h + 12;
+    };
+    field("Reference ID", "ReferenceID", { value: id, readOnly: true });
+    field("Full name", "FullName");
+    field("Organisation", "Organisation");
+    field("Email", "Email");
+    field("Contact number", "ContactNumber");
+    field("Remarks", "Remarks", { h: 30, multiline: true });
+    field("Signature", "Signature", { h: 14 });
+    field("Date", "Date");
+  
+    // Footer on the page carries the ID too
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(120, 130, 140);
+    doc.text("Reference " + id + (issuedBy ? "  ·  Issued to " + issuedBy : "") + "  ·  " + stamp, M, 287);
+    return doc;
+  }
+  
+
+  // On claude.ai the page saves through the downloads capability; elsewhere (e.g. Azure) it uses a normal file link.
+  let downloadsPromise = null;
+  function getDownloads() {
+    if (!downloadsPromise) {
+      downloadsPromise = (window.claude && typeof window.claude.use === "function")
+        ? window.claude.use("downloads").catch(() => null)
+        : Promise.resolve(null);
+    }
+    return downloadsPromise;
+  }
+
+  async function download(id, btn, state) {
+    if (!window.jspdf) { state.className = "state bad"; state.textContent = "PDF library didn't load. Check your connection and reload."; return; }
+    btn.disabled = true; state.className = "state"; state.textContent = "Preparing…";
+    try {
+      const doc = buildFormPdf(window.jspdf, id, getSession());
+      const blob = doc.output("blob");
+      const filename = `Form_${id}.pdf`;
+      const downloads = await getDownloads();
+      if (downloads) {
+        await downloads.save({ filename, data: blob });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = filename;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+      state.className = "state ok"; state.textContent = "Downloaded";
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "declined") { state.className = "state"; state.textContent = "Cancelled"; }
+      else if (code === "rate_limited") { state.className = "state bad"; state.textContent = "Another download is waiting. Try again in a moment."; }
+      else { state.className = "state bad"; state.textContent = "Couldn't download. Please try again."; }
+    } finally { btn.disabled = false; }
+  }
+
+  // ---- Start ----
+  const existing = getSession();
+  if (existing === DEFAULT_USERNAME) showApp(existing); else $("#u").focus();
+})();
+</script>
+</body>
+</html>
